@@ -9,22 +9,16 @@ var basePath = 'rn-test/build/out';
 
 var queue = [];
 
-// Next:
-// - Figwheel will need some changes to work in a 'DOM-less' environment
-//   - i.e. with web-worker react-native packager
-//   - because it uses document.createElement and document.setInnerHTML
-//   - but there is probably some setting I don't know about...
-// - eval(window, args) may not work in web-worker either
-// - it would be nice to add :target :web-worker to cljsbuild
-
+// Synchronously evals code (even if later ajax's complete first)
 function waitForTurn(src, content, callback){
   setTimeout(function(){
     if(queue.length > 0){
       if(queue[0] === src){
         eval.call(window, content);
         let last = queue.shift();
+        // hacky, but shims goog.net.jsLoader after it is evaled.
         if(last.indexOf('goog/net/jsloader') > -1) { shimJsLoader(); }
-        console.log('Succesfully evaled. I think...');
+        console.log('Evaled.');
         callback();
       }else{
         waitForTurn(src, content, callback);
@@ -35,6 +29,8 @@ function waitForTurn(src, content, callback){
   }, 100);
 }
 
+// Synchronously loads JS (using queue variable)
+//   run into a lot of errors if code is async eval'd
 function loadSyncJS(src, cb) {
   if (typeof cb !== 'function') { cb = function(){}; }
   queue.push(src);
@@ -49,6 +45,8 @@ function loadSyncJS(src, cb) {
   console.log('GET: ' + src);
 }
 
+// Loads base goog js file then cljs_deps, goog.deps, core project cljs, and then figwheel
+// Also calls the function to shim goog.require
 function startEverything() {
   if(typeof goog === "undefined") {
     console.log('Loading Closure base.');
@@ -71,8 +69,7 @@ module.exports = {
 function shim(goog, writeSync, basePath){
   console.log('Shimming google\'s Closure library.');
   // Sets goog.writeScriptSrcNode_ to above function
-  //   Not sure if there is a native closure way to have code remotely evaled...
-  //   (closure docs are confusing...)
+  //   Not sure if there is a native goog closure way to have code remotely evaled...
   goog.writeScriptSrcNode_ = writeSync;
   // Clears up a small (document) error
   goog.writeScriptTag_ = function(src, opt_sourceText) {
@@ -91,7 +88,7 @@ function shim(goog, writeSync, basePath){
   eval.call(window, 'var document = {}; document.body = {}; document.body.dispatchEvent = function(){}; document.createElement = function(){};');
 }
 
-// Loads and evals js over HTTP instead of adding script tags
+// Used by figwheel - Loads and evals js over HTTP instead of adding script tags
 //   have it call after src==='goog.net.jsLoader' in the async load above
 //   or call it from figwheel start script...
 function shimJsLoader(){
@@ -116,9 +113,6 @@ function shimJsLoader(){
         }
       }
     };
-
-    console.log(uri.getPath());
-    console.log(options);
 
     loadSyncJS(uri.getPath(), function(){
       deferred.callAllCallbacks();

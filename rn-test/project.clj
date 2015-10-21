@@ -20,7 +20,9 @@
     :builds [{:id "dev"
               :source-paths ["src"]
               ; must set heads up display to false since there is no document variable...
-              :figwheel { :on-jsload "rn-test.core/on-js-reload" :heads-up-display false :debug true}
+              :figwheel { :on-jsload "rn-test.core/on-js-reload" 
+                          :heads-up-display false 
+                          :debug false} ; 
 
               :compiler {:main rn-test.core
                          :asset-path "build/out"
