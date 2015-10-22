@@ -4,119 +4,103 @@
 
 var CLOSURE_UNCOMPILED_DEFINES = null;
 
-var baseUrl = 'http://localhost:8081/'
-var basePath = 'rn-test/build/out';
+var config = {
+  basePath: '/rn-test/build/out/',
+  googBasePath: 'goog/',
+  platform: 'ios',
+  dev: 'true'
+};
 
-var queue = [];
 
-// Synchronously evals code (even if later ajax's complete first)
-function waitForTurn(src, content, callback){
-  setTimeout(function(){
-    if(queue.length > 0){
-      if(queue[0] === src){
-        eval.call(window, content);
-        let last = queue.shift();
-        // hacky, but shims goog.net.jsLoader after it is evaled.
-        if(last.indexOf('goog/net/jsloader') > -1) { shimJsLoader(); }
-        console.log('Evaled.');
-        callback();
-      }else{
-        waitForTurn(src, content, callback);
-      }
-    }else{
-      // ???
-    }
-  }, 100);
-}
+// Uninstall watchman???
+function importJs(src, success, error){
+  if(typeof success !== 'function') { success = function(){}; }
+  if(typeof error !== 'function') { error = function(){}; }
 
-// Synchronously loads JS (using queue variable)
-//   run into a lot of errors if code is async eval'd
-function loadSyncJS(src, cb) {
-  if (typeof cb !== 'function') { cb = function(){}; }
-  queue.push(src);
-
-  var r = new XMLHttpRequest();
-  r.open('GET', baseUrl + src, true);
-  r.onreadystatechange = function () {
-    if (r.readyState != 4 || r.status != 200) return;
-    waitForTurn(src, r.responseText, cb);
-  };
-  r.send();
-  console.log('GET: ' + src);
-}
-
-// Loads base goog js file then cljs_deps, goog.deps, core project cljs, and then figwheel
-// Also calls the function to shim goog.require
-function startEverything() {
-  if(typeof goog === "undefined") {
-    console.log('Loading Closure base.');
-    loadSyncJS(basePath + '/goog/base.js', function(){
-      shim(goog, loadSyncJS, basePath);
-      loadSyncJS(basePath + '/cljs_deps.js');
-      loadSyncJS(basePath + '/goog/deps.js', function(){
-        goog.require('rn_test.core');
-        goog.require('figwheel.connect');
-      });
-    });
+  console.log('(Figwheel Bridge) Importing: ' + config.basePath + src);
+  try {
+    importScripts(config.basePath + src);
+    success();
+  } catch(e) {
+    console.warn('Could not load: ' + config.basePath + src);
+    console.error('Import error: ' + e);
+    error();
   }
 }
 
-module.exports = {
-  start: startEverything
+// Loads base goog js file then cljs_deps, goog.deps, core project cljs, and then figwheel
+// Also calls the function to shim goog.require and goog.net.jsLoader.load
+function startEverything() {
+  if(typeof goog === "undefined") {
+    console.log('Loading Closure base.');
+    importJs('goog/base.js');
+    shimBaseGoog();
+    fakeLocalStorageAndDocument();
+    importJs('cljs_deps.js');
+    importJs('/goog/deps.js');
+    goog.require('figwheel.connect');
+    goog.require('rn_test.core');
+    shimJsLoader();
+
+    console.log('Done loading Figwheel and Clojure app');
+  }
 }
 
-// Function to shim goog to use above write function instead of modifying the body...
-function shim(goog, writeSync, basePath){
-  console.log('Shimming google\'s Closure library.');
-  // Sets goog.writeScriptSrcNode_ to above function
-  //   Not sure if there is a native goog closure way to have code remotely evaled...
-  goog.writeScriptSrcNode_ = writeSync;
-  // Clears up a small (document) error
-  goog.writeScriptTag_ = function(src, opt_sourceText) {
-    goog.writeScriptSrcNode_(src);
+function shimBaseGoog(){
+  goog.basePath = 'goog/';
+  goog.writeScriptSrcNode = importJs;
+  goog.writeScriptTag_ = function(src, opt_sourceText){
+    importJs(src);
     return true;
-  };
-  // Sets goog basePath to above basePath plus the goog folder
-  goog.basePath = basePath + '/goog/';
-
-
-  // To fix figwheel errors
-  // fake that we're in an html document
+  }
   goog.inHtmlDocument_ = function(){ return true; };
-  // fake localStorage
-  eval.call(window, 'var localStorage = {}; localStorage.getItem = function(){ return "true"; }; localStorage.setItem = function(){};');
-  eval.call(window, 'var document = {}; document.body = {}; document.body.dispatchEvent = function(){}; document.createElement = function(){};');
 }
 
-// Used by figwheel - Loads and evals js over HTTP instead of adding script tags
-//   have it call after src==='goog.net.jsLoader' in the async load above
-//   or call it from figwheel start script...
+function fakeLocalStorageAndDocument() {
+  window.localStorage = {};
+  window.localStorage.getItem = function(){ return 'true'; };
+  window.localStorage.setItem = function(){};
+
+  window.document = {};
+  window.document.body = {};
+  window.document.body.dispatchEvent = function(){};
+  window.document.createElement = function(){};
+}
+
+module.exports = {
+  start: startEverything,
+  config: config
+}
+
+
+// Used by figwheel - uses importScript to load JS rather than <script>'s
 function shimJsLoader(){
   goog.net.jsloader.load = function(uri, options) {
     var deferred = {
       callbacks: [],
       errbacks: [],
       addCallback: function(cb){
-        this.callbacks.push(cb);
+        deferred.callbacks.push(cb);
       },
       addErrback: function(cb){
-        this.errbacks.push(cb);
+        deferred.errbacks.push(cb);
       },
       callAllCallbacks: function(){
-        while(this.callbacks.length > 0){
-          this.callbacks.shift()();
+        while(deferred.callbacks.length > 0){
+          deferred.callbacks.shift()();
         }
       },
       callAllErrbacks: function(){
-        while(this.errbacks.length > 0){
-          this.errbacks.shift()();
+        while(deferred.errbacks.length > 0){
+          deferred.errbacks.shift()();
         }
       }
     };
 
-    loadSyncJS(uri.getPath(), function(){
-      deferred.callAllCallbacks();
-    });
+    // Figwheel needs this to be an async call, so that it can add callbacks to deferred
+    setTimeout(function(){
+      importJs(uri.getPath(), deferred.callAllCallbacks, deferred.callAllErrbacks);
+    }, 1)
 
 
     return deferred;

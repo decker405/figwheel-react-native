@@ -9,13 +9,15 @@ var FigBridge = require('FigwheelBridge');
 
 var {
   AppRegistry,
-  View
+  View,
+  Text
 } = React;
 
 var figTest = React.createClass({
   render: function() {
     return (
-      <View>
+      <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
+        <Text>Reagent/Om not loaded yet.</Text>
       </View>
     );
   }
@@ -23,7 +25,8 @@ var figTest = React.createClass({
 
 AppRegistry.registerComponent('figTest', () => figTest);
 
-FigBridge.start();
+// For some reason, Reagent doesn't render on inital load unless this is async...
+setTimeout(FigBridge.start, 1);
 
 
 
