@@ -11,7 +11,6 @@ var config = {
   dev: 'true'
 };
 
-
 // Uninstall watchman???
 function importJs(src, success, error){
   if(typeof success !== 'function') { success = function(){}; }
@@ -37,9 +36,11 @@ function startEverything() {
     shimBaseGoog();
     fakeLocalStorageAndDocument();
     importJs('cljs_deps.js');
-    importJs('/goog/deps.js');
-    goog.require('figwheel.connect');
-    goog.require('rn_test.core');
+    importJs('goog/deps.js');
+    importJs('figwheel/connect.js');
+
+    // goog.require('figwheel.connect');
+    // goog.require('rn_test.core');
     shimJsLoader();
 
     console.log('Done loading Figwheel and Clojure app');
@@ -102,15 +103,6 @@ function shimJsLoader(){
       importJs(uri.getPath(), deferred.callAllCallbacks, deferred.callAllErrbacks);
     }, 1)
 
-
     return deferred;
   }
 }
-
-
-
-
-
-
-
-
