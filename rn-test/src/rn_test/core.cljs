@@ -1,6 +1,6 @@
 (ns ^:figwheel-always rn-test.core
   (:require
-    [reagent.core :as r :refer [atom]]))
+   [reagent.core :as r :refer [atom]]))
 
 (set! js/React (js/require "react-native/Libraries/react-native/react-native.js"))
 
@@ -11,25 +11,24 @@
 
 (defonce app-state (r/atom "In the figwheel REPL type:\n (in-ns 'rn-test.core)\n(reset! app-state \"Hello!\")"))
 
-(def styles {
-	:app { :flex 1
-				 :align-items :stretch}
-	:header { :flex 1
-						:background-color "#34495e"
-						:justify-content :center
-						:align-items :center}
-	:body { :flex 9
-					:background-color "#ecf0f1"
-          :align-items :center
-          :justify-content :center
-          :flex-direction :column}
-	:footer { :flex 1
-						:background-color "#34495e"
-						:justify-content :center
-						:align-items :center}
-	:text { :color "#ecf0f1"
-					:font-size 20
-					:font-weight "600"}})
+(def styles {:app { :flex 1
+                   :align-items :stretch}
+             :header { :flex 1
+                      :background-color "#34495e"
+                      :justify-content :center
+                      :align-items :center}
+             :body { :flex 9
+                    :background-color "#ecf0f1"
+                    :align-items :center
+                    :justify-content :center
+                    :flex-direction :column}
+             :footer { :flex 1
+                      :background-color "#34495e"
+                      :justify-content :center
+                      :align-items :center}
+             :text { :color "#ecf0f1"
+                    :font-size 20
+                    :font-weight "600"}})
 
 (defn root []
   [View
@@ -42,6 +41,14 @@
    [View {:style (:footer styles)}
     [Text {:style (:text styles)} "Footer"]]])
 
+;; -------------------- min profile, for offline bundle, release ----------------
+
+;; (.registerRunnable (.-AppRegistry js/React) "issues"
+;;                    (fn [params]
+;;                      (r/render [root] (.-rootTag params))))
+
+;; -------------------- dev profile ---------------------------------------------
+
 (r/render [root] 1)
 
 (defn ^:export init []
@@ -51,5 +58,4 @@
 (defn on-js-reload []
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
-)
-
+  )
