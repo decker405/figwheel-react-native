@@ -9,6 +9,8 @@
 
 (enable-console-print!)
 
+(print "Test")
+
 (defonce app-state (r/atom "In the figwheel REPL type:\n (in-ns 'rn-test.core)\n(reset! app-state \"Hello!\")"))
 
 (def styles {:app { :flex 1
@@ -36,7 +38,7 @@
    [View {:style (:header styles)}
     [Text {:style (:text styles)} "Header"]]
    [View {:style (:body styles)}
-    [Text "Edit me and watch me update.\n"]
+    [Text "Edit me and do watch this shit.\n"]
     [Text @app-state]]
    [View {:style (:footer styles)}
     [Text {:style (:text styles)} "Footer"]]])
@@ -55,7 +57,6 @@
   ((fn render []
      (.requestAnimationFrame js/window render))))
 
-(defn on-js-reload []
+(defn on-js-reload [])
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
-  )

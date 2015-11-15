@@ -69,6 +69,5 @@ xcuserdata
 # user defined
 
 /rn-test/build/
-
-
-
+/dev/
+/min/
