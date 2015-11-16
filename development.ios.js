@@ -1,10 +1,16 @@
 'use strict';
 // This file is used to setup React Native and fighweel dev environment
 // It should only be used when in development
-// For production run: react-native bundle, instead
+// For production run: `npm run build`
+
+// TODO:
+// - update readme for production minification
+// - shim figwheel HUD to work in iOS simulator
+// - general cleanup
+// - move to npm package?
+// - look into `Unbalanced calls start/end for tag 5`
 
 // React setup
-
 var React = require('react-native');
 
 var placeHolder = React.createClass({
@@ -31,12 +37,11 @@ var config = {
 
 // Load Cljs code and shim necessary js functions
 function loadProject() {
-  console.log('Dev? ' + __DEV__);
-  console.log(config);
+  console.info('Dev? ' + __DEV__);
+  console.info(config);
   if (typeof goog === 'undefined') {
-    console.log('Loading Closure base.');
+    console.info('Loading Closure base.');
     importJs('goog/base.js', function() {
-      console.log('Goog? ' + goog);
       shimBaseGoog();
       fakeLocalStorageAndDocument();
       importJs('cljs_deps.js');
@@ -45,21 +50,15 @@ function loadProject() {
         var fig = 'figwheel.connect';
         goog.require(fig);
         goog.require('rn_test' + '.core');
-        // console.log('Done loading Figwheel and Clojure app');
       });
     });
   }else {
-    console.log('Something is wrong. Goog is defined...');
+    console.error('Something is wrong. Goog is defined...');
   }
 }
 
-if (!importScripts) {
-  console.log('Not in a web worker environment.');
-  console.log('Shimming importScripts function.');
-  var importScripts = myImportScripts;
-}
-
 var globalEval = eval;
+var importScripts = myImportScripts;
 var scriptQueue = [];
 
 function customEval(url, javascript, success, error) {
@@ -67,22 +66,22 @@ function customEval(url, javascript, success, error) {
     if (scriptQueue[0] === url) {
       try {
         globalEval(javascript);
-        console.log('Evaluated: ' + url);
+        console.info('Evaluated: ' + url);
         scriptQueue.shift();
         if(url.indexOf('jsloader') > -1){
           shimJsLoader();
         }
         success();
       } catch (e) {
-        console.log('Evaluation error in: ' + url);
-        console.log(e);
+        console.error('Evaluation error in: ' + url);
+        console.error(e);
         error();
       }
     } else {
       setTimeout(customEval, 5, url, javascript, success, error);
     }
   } else {
-    console.log('Something bad happened...');
+    console.error('Something bad happened...');
     error()
   }
 }
@@ -90,7 +89,7 @@ function customEval(url, javascript, success, error) {
 function myImportScripts(path, success, error) {
   var url = config.SERVER + '/' + path;
 
-  //console.log('Fetching: ' + url);
+  console.info('(myImportScripts) Importing: ' + url);
   scriptQueue.push(url);
   fetch(url)
     .then((response) => response.text())
@@ -99,8 +98,8 @@ function myImportScripts(path, success, error) {
       customEval(url, js, success, error);
     })
     .catch((error) => {
-      console.log('Error loading script, please check your config setup.');
-      console.log(error);
+      console.error('Error loading script, please check your config setup.');
+      console.error(error);
       error();
     });
 }
@@ -112,21 +111,13 @@ function importJs(src, success, error) {
 
   var filePath = config.OUTPUTDIR + '/' + src;
 
-  //console.log('(Figwheel Bridge) Importing: ' + filePath);
+  console.info('(importJs) Importing: ' + filePath);
   importScripts(filePath, success, error);
-  // try {
-  //   importScripts(filePath);
-  //   success();
-  // } catch (e) {
-  //   console.warn('Could not load: ' + filePath);
-  //   console.error('Import error: ' + e);
-  //   error();
-  // }
 }
 
 // Goog fixes
 function shimBaseGoog() {
-  console.log('Shimming goog functions.');
+  console.info('Shimming goog functions.');
   goog.basePath = 'goog/';
   goog.writeScriptSrcNode = importJs;
   goog.writeScriptTag_ = function(src, optSourceText) {
@@ -146,7 +137,9 @@ function fakeLocalStorageAndDocument() {
   window.document.body.dispatchEvent = function() {};
   window.document.createElement = function() {};
 
-  window.location = {};
+  if (typeof window.location === 'undefined') {
+      window.location = {};
+  }
   console.debug = console.warn;
   window.addEventListener = function() {};
 }
@@ -154,7 +147,7 @@ function fakeLocalStorageAndDocument() {
 // Figwheel fixes
 // Used by figwheel - uses importScript to load JS rather than <script>'s
 function shimJsLoader() {
-  console.log('==== Shimming jsloader ====');
+  console.info('==== Shimming jsloader ====');
   goog.net.jsloader.load = function(uri, options) {
     var deferred = {
       callbacks: [],

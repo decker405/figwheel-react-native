@@ -71,3 +71,5 @@ xcuserdata
 /rn-test/build/
 /dev/
 /min/
+ios/main.jsbundle
+index.ios.js

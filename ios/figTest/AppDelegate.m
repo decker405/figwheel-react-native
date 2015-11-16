@@ -13,6 +13,7 @@
 
 // Change this to false to load production build output
 #define FIGWHEEL true
+// TODO: change this to handle different build schemes
 
 @implementation AppDelegate
 
