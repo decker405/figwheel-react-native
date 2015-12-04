@@ -3,6 +3,9 @@
    [reagent.core :as r :refer [atom]]))
 
 (set! js/React (js/require "react-native/Libraries/react-native/react-native.js"))
+;; React Native should set DEV to false when bundling with --minify
+;;   if you're getting App Registration errors in production, just set this to false
+(def developMode? js/__DEV__)
 
 (def Text (r/adapt-react-class (.-Text js/React)))
 (def View (r/adapt-react-class (.-View js/React)))
@@ -36,26 +39,23 @@
    [View {:style (:header styles)}
     [Text {:style (:text styles)} "Header"]]
    [View {:style (:body styles)}
-    [Text "Edit me and watch me update.\n"]
+    [Text "Edit me and watch me change.\n"]
     [Text @app-state]]
    [View {:style (:footer styles)}
     [Text {:style (:text styles)} "Footer"]]])
 
-;; -------------------- min profile, for offline bundle, release ----------------
+(defn runDevelopment []
+  (r/render [root] 1)
+  (defn ^:export init []
+    ((fn render []
+      (.requestAnimationFrame js/window render)))))
 
-;; (.registerRunnable (.-AppRegistry js/React) "issues"
-;;                    (fn [params]
-;;                      (r/render [root] (.-rootTag params))))
+(defn runProduction []
+  (.registerRunnable (.-AppRegistry js/React) "figTest"
+                     (fn [params]
+                       (r/render [root] (.-rootTag params)))))
+(case developMode?
+  true (runDevelopment)
+  (runProduction))
 
-;; -------------------- dev profile ---------------------------------------------
-
-(r/render [root] 1)
-
-(defn ^:export init []
-  ((fn render []
-     (.requestAnimationFrame js/window render))))
-
-(defn on-js-reload []
-  ;; optionally touch your app-state to force rerendering depending on
-  ;; your application
-  )
+(defn on-js-reload [])

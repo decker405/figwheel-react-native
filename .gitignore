@@ -69,6 +69,8 @@ xcuserdata
 # user defined
 
 /rn-test/build/
-
-
-
+/dev/
+/min/
+ios/main.jsbundle
+index.ios.js
+index.android.js

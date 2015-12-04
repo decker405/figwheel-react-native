@@ -4,45 +4,38 @@
 1. Clone the repo: `https://github.com/decker405/figwheel-react-native.git`
 2. `cd figwheel-react-native`
 3. Install node dependencies: `npm i`
-4. `cd rn-test`
-5. Run figwheel: `lein figwheel` or `rlwrap lein figwheel` (if rlwrap installed)
-6. `cd ../`
-7. Run packager: `npm start` or `./node_modules/react-native/packager/packager.sh`
-8. Open `ios/figTest.xcodeproj` in XCode
-9. Run app in simulator
-10. Press `⌘ + D `  and select `Debug in Chrome`
-11. Watch figwheel dependencies load and then connect
-12. Make changes to your code or in the repl
+4. Run figwheel: `lein figwheel` or `rlwrap lein figwheel` (if rlwrap installed)
+5. Run packager: `npm start` or `./node_modules/react-native/packager/packager.sh`
+6. Open `ios/figTest.xcodeproj` in Xcode
+7. Run app in simulator
+8. You should see the figwheel dependencies load in the Xcode Console
+9. Make changes to your code or in the repl and watch figwheel do it's magic
+
+(Optionally (and it's a bit nicer to use) you can press `⌘ + D ` in the simulator and select `Debug in Chrome` to have your debug ouput in the chrome browser. Be warned that this can lead to errors with your code as Chrome's V8 and iOS' JavascriptCore have some functions that behave differently)
 
 I also advise you to install watchman `brew install watchman` (it will make the packager faster)
 [watchman](https://facebook.github.io/watchman/)
 
-#### Notes
+#### Dependency Information
 
-- This is very experimental (should work with RN 0.12.0 and below, but haven't tested it)
-- Only tested with iOS
-- Live-reload works
-- There may be errors when adding or removing files that will require you to reload the simulator
-- I expect uncaught errors in edge-cases (the code is not incredibly robust)
+- Should work with React Native >=0.13 (probably works on 0.12 as well)
+- Only tested on iOS, not yet on Android
 
-#### TODO:
-- ~~Automatically remove react.inc.js from dependencies (when reagent or om is required)~~
-- Write a plugin for lein-figwheel instead of shimming goog.net.jsLoader.load
-- Test on RN 0.13.0-RC
-- Production app build step
-- Test on actual iOS device (not simulator)
-- Remove @providesModule from figwheel_bridge.js and put in npm?
-- Deal with the `*.js.map?rel=####` error (packager not accepting queries that don't involve platform=ios/android) - not sure if this is a major problem or not...
-- lein build template
+#### Caveats
 
-### How it works:
-- React Native's `Debug in Chrome` option opens up a web socket with the simulator/device, executes all javascript code in a web worker, and then sends the results to device (or something of the sort, not sure I fully understand)
-- Shimming goog.require and goog.net.jsLoader (figwheel uses jsLoader to reload files) to use the webworkers `importScripts()` function allows Google Closure to work without `<script>`s
+- There are issues with requiring nodejs modules because of how React Native's packager works
+  (may be solvable by direct linking instead of using the module name)
+- Have not yet devised a great/simple production build step
 
-### Contributing
-Advice, tips, and general code contributions welcome and encouraged.
+#### Production Build Instructions
 
-### License
+- Run `lein cljs-build once min`
+- Run `npm run build`
+- Link to the local js bundle in AppDelegate.m and run in the simulator
+- Errors are most likely related to how React Native is setting its \_\_DEV\_\_ variable
+  (try setting developMode? to false in [src/rn_test/core.cljs](https://github.com/decker405/figwheel-react-native/blob/inSimulatorReload/src/rn_test/core.cljs#L6-L8) - need to use the runProduction function rather than runDevelop)
+
+#### License
 [LICENSE](/LICENSE)
 
 
